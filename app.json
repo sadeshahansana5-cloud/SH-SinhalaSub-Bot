@@ -1,0 +1,116 @@
+{
+    "name": "𝓓𝓻𝓮𝓪𝓶𝔁𝓑𝓸𝓽𝔃",
+    "description": "Sinhala Subtitle Bot - Auto filter bot for Sinhala subtitles",
+    "stack": "container",
+    "keywords": [
+      "telegram",
+      "auto-filter",
+      "subtitle",
+      "sinhala",
+      "pyrogram",
+      "media",
+      "search",
+      "channel",
+      "index",
+      "inline"
+    ],
+    "website": "https://github.com/DreamXBotz/Auto_Filter_Bot.git",
+    "repository": "https://github.com/DreamXBotz/Auto_Filter_Bot.git",
+    "env": {
+        "BOT_TOKEN": {
+            "description": "Your bot token.",
+            "required": true
+        },
+        "API_ID": {
+            "description": "Get this value from https://my.telegram.org",
+            "required": true
+        },
+        "API_HASH": {
+            "description": "Get this value from https://my.telegram.org",
+            "required": true
+        },
+        "CHANNELS": {
+            "description": "Username or ID of channel or group. Separate multiple IDs by space.",
+            "required": false
+        },
+        "ADMINS": {
+            "description": "Username or ID of Admin. Separate multiple Admins by space.",
+            "required": true
+        },
+        "PICS": {
+            "description": "Add some telegraph link of pictures .",
+            "required": false
+        },
+        "LOG_CHANNEL": {
+            "description": "Bot Logs,Give a channel id with -100xxxxxxx",
+            "required": true
+        },
+        "AUTH_USERS": {
+            "description": "Username or ID of users to give access of inline search. Separate multiple users by space.\nLeave it empty if you don't want to restrict bot usage.",
+            "required": false
+        },
+        "AUTH_CHANNEL": {
+            "description": "ID of channel.Make sure bot is admin in this channel. Without subscribing this channel users cannot use bot.",
+            "required": false
+        },
+        "DATABASE_URI": {
+            "description": "mongoDB URI. Get this value from https://www.mongodb.com.",
+            "required": true
+        },
+        "DATABASE_URI2": {
+            "description": "mongoDB URI. Get this value from https://www.mongodb.com.",
+            "required": true
+        },
+        "DATABASE_NAME": {
+            "description": "Name of the database in mongoDB.",
+            "required": false
+        },
+        "COLLECTION_NAME": {
+            "description": "Name of the collections. Defaults to Telegram_files. If you are using the same database, then use different collection name for each bot",
+            "value": "Telegram_files",
+            "required": false
+        },
+        "ALLOWED_GROUP_IDS": {
+            "description": "Space-separated list of group IDs where the bot is allowed to work. Leave empty to allow all groups.",
+            "required": false
+        },
+        "SUBTITLE_ONLY_MODE": {
+            "description": "Set to True to index only subtitle files (srt, zip, rar, etc.). Default: True",
+            "required": false,
+            "value": "True"
+        },
+        "ENABLE_FORWARD_PROTECTION": {
+            "description": "Set to True to prevent non-premium users from forwarding files. Default: True",
+            "required": false,
+            "value": "True"
+        },
+        "SHOW_SENDALL_NON_PREMIUM": {
+            "description": "If True, show Send All button to non-premium users with alert; if False, hide it. Default: True",
+            "required": false,
+            "value": "True"
+        },
+        "ENABLE_REQUESTS": {
+            "description": "Enable/disable the /request feature. Default: True",
+            "required": false,
+            "value": "True"
+        },
+        "REQUEST_CHANNEL": {
+            "description": "Channel ID to send subtitle requests to (make bot admin).",
+            "required": false
+        },
+        "REQUEST_LOGS": {
+            "description": "Log channel ID for requests (optional, defaults to LOG_CHANNEL).",
+            "required": false
+        }
+    },
+    "addons": [],
+    "buildpacks": [{
+        "url": "heroku/python"
+    }],
+    "formation": {
+        "worker": {
+            "quantity": 1,
+            "size": "eco"
+        }
+    }
+}
