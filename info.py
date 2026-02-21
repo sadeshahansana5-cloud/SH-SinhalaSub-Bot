@@ -316,3 +316,10 @@ ENABLE_FORWARD_PROTECTION = is_enabled(os.environ.get('ENABLE_FORWARD_PROTECTION
 
 # Broadcast fix: keep original message buttons
 BROADCAST_KEEP_BUTTONS = is_enabled(os.environ.get('BROADCAST_KEEP_BUTTONS', 'True'), True)
+
+# ============================
+# Request System Configuration
+# ============================
+ENABLE_REQUESTS = is_enabled(os.environ.get('ENABLE_REQUESTS', 'True'), True)  # Enable/disable request feature
+REQUEST_CHANNEL = int(environ.get('REQUEST_CHANNEL', '-100'))  # Channel to send requests to (make bot admin)
+REQUEST_LOGS = int(environ.get('REQUEST_LOGS', LOG_CHANNEL))  # Log channel for requests (optional)
