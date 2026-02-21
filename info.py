@@ -290,7 +290,7 @@ LOG_STR += ("Spell Check Mode is enabled, bot will be suggesting related movies 
 ALLOWED_EXTENSIONS = ['.srt', '.zip', '.rar', '.ass', '.ssa', '.vtt', '.sub']
 
 # Enable subtitle-only mode (videos/audios will be ignored)
-SUBTITLE_ONLY_MODE = is_enabled(os.environ.get('SUBTITLE_ONLY_MODE', 'True'), True)
+SUBTITLE_ONLY_MODE = is_enabled(os.environ.get('SUBTITLE_ONLY_MODE', 'False'), False)
 
 # Restrict bot to specific groups (comma-separated IDs). If empty, no restriction.
 ALLOWED_GROUP_IDS = [int(gid) for gid in environ.get('ALLOWED_GROUP_IDS', '').split() if gid.strip()]
