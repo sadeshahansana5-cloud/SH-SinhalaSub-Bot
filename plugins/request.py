@@ -9,6 +9,7 @@ from database.users_chats_db import db
 from database.ia_filterdb import Media
 from info import ENABLE_REQUESTS, REQUEST_CHANNEL, REQUEST_LOGS, TMDB_API_KEY, LOG_CHANNEL
 from plugins.Dreamxfutures.Imdbposter import get_movie_detailsx
+from utils import get_poster
 from Script import script
 
 logger = logging.getLogger(__name__)
@@ -35,59 +36,74 @@ async def request_command(client, message):
     )
     
     # Store state
-    user_request_data[user_id] = {"step": "waiting_name", "chat_id": chat_id, "ask_msg_id": ask_msg.id}
+    user_request_data[user_id] = {
+        "step": "waiting_name",
+        "chat_id": chat_id,
+        "ask_msg_id": ask_msg.id,
+        "original_msg_id": message.id
+    }
     
-    # Wait for response with timeout
+    # No listener needed - we'll handle the next message in a separate handler
+    # Set a timeout to clear data if user doesn't respond
+    asyncio.create_task(clear_request_timeout(user_id, 60))
+
+async def clear_request_timeout(user_id, timeout):
+    """Clear user request data after timeout."""
+    await asyncio.sleep(timeout)
+    if user_id in user_request_data and user_request_data[user_id].get("step") == "waiting_name":
+        # Notify user about timeout
+        try:
+            data = user_request_data[user_id]
+            await Client.send_message(
+                chat_id=data["chat_id"],
+                text=script.REQUEST_TIMEOUT_TXT,
+                reply_to_message_id=data.get("original_msg_id")
+            )
+        except Exception as e:
+            logger.error(f"Error sending timeout message: {e}")
+        finally:
+            user_request_data.pop(user_id, None)
+
+@Client.on_message(filters.text & filters.private & ~filters.command(["request", "start", "help"]))
+async def handle_request_input(client, message):
+    """Handle user's response to request prompt."""
+    user_id = message.from_user.id
+    
+    # Check if user is in request mode
+    if user_id not in user_request_data or user_request_data[user_id].get("step") != "waiting_name":
+        return
+    
+    query = message.text.strip()
+    data = user_request_data[user_id]
+    
+    # Delete the ask message
     try:
-        response = await client.listen(chat_id=chat_id, user_id=user_id, timeout=60)
-    except asyncio.TimeoutError:
-        await ask_msg.edit_text(script.REQUEST_TIMEOUT_TXT)
-        user_request_data.pop(user_id, None)
-        return
+        await client.delete_messages(chat_id=data["chat_id"], message_ids=data["ask_msg_id"])
+    except Exception as e:
+        logger.error(f"Error deleting ask message: {e}")
     
-    # Cancel if user pressed cancel or response is a command
-    if response.text and response.text.startswith("/"):
-        await ask_msg.delete()
-        await response.delete()
-        user_request_data.pop(user_id, None)
-        return
+    # Clear the state (will be set again if needed)
+    user_request_data.pop(user_id, None)
     
     # Process the search
-    await process_name_input(client, message, response, ask_msg)
+    await process_name_input(client, message, query)
 
-async def process_name_input(client, original_msg, response_msg, ask_msg):
-    """Process the movie name input and search TMDB."""
+async def process_name_input(client, response_msg, query):
+    """Process the movie name input and search for results."""
     user_id = response_msg.from_user.id
-    query = response_msg.text.strip()
-    
-    # Delete user's message and the ask message
-    await response_msg.delete()
-    await ask_msg.delete()
+    chat_id = response_msg.chat.id
     
     # Inform user we are searching
-    searching_msg = await original_msg.reply_text(
+    searching_msg = await response_msg.reply_text(
         script.REQUEST_SEARCHING_TXT.format(query=query)
     )
     
-    # Search TMDB
+    # Search for movies
     try:
-        # Use get_movie_detailsx to get search results
-        # This function returns details for the first result, but we need a list of results.
-        # Since get_movie_detailsx doesn't support bulk, we'll use an alternative approach:
-        # We can use the original get_poster with bulk=True, but that uses IMDb, not TMDB.
-        # To keep TMDB, we might need to call a search endpoint. For simplicity, we'll use get_movie_detailsx
-        # and if it returns None, try with get_poster? But the user wanted TMDB.
-        # Actually, get_movie_detailsx already does a search and returns the best match, but we need multiple options.
-        # We can implement a simple TMDB search using aiohttp. But the existing code uses an external API that might not support multiple results.
-        # Given the complexity, we'll adapt: use get_poster (IMDb) for suggestions, and then when user selects, use get_movie_detailsx for details.
-        # This aligns with the existing misc.py approach.
-        
-        from utils import get_poster
         movies = await get_poster(query, bulk=True)
         
         if not movies:
             await searching_msg.edit_text(script.REQUEST_NO_RESULTS_TXT.format(query=query))
-            user_request_data.pop(user_id, None)
             return
         
         # Create buttons for up to 5 movies
@@ -112,12 +128,9 @@ async def process_name_input(client, original_msg, response_msg, ask_msg):
             reply_markup=InlineKeyboardMarkup(buttons)
         )
         
-        # Store the query and movie list for later? Not needed.
-        
     except Exception as e:
         logger.exception(f"Error in request search: {e}")
         await searching_msg.edit_text("❌ An error occurred. Please try again later.")
-        user_request_data.pop(user_id, None)
 
 @Client.on_callback_query(filters.regex(r"^req_select_"))
 async def select_movie_callback(client, query: CallbackQuery):
@@ -129,11 +142,10 @@ async def select_movie_callback(client, query: CallbackQuery):
     
     # Fetch movie details
     try:
-        # Use get_movie_detailsx with TMDB if possible, else fallback to get_movie_details
+        # Try TMDB first
         details = await get_movie_detailsx(movie_id, id=True)
         if not details or details.get("error"):
             # Fallback to IMDb
-            from utils import get_poster
             details = await get_poster(movie_id, id=True)
             if not details:
                 await query.message.edit_text("❌ Could not fetch movie details.")
@@ -142,8 +154,7 @@ async def select_movie_callback(client, query: CallbackQuery):
         # Check if subtitles already exist in database
         title = details.get('title', '')
         year = details.get('year', '')
-        search_query = f"{title} {year}".strip()
-        # Simple check: count documents with file_name containing title and year
+        # Simple check: count documents with file_name containing title
         subtitle_count = await Media.count_documents({
             "file_name": {"$regex": re.escape(title), "$options": "i"},
             "file_type": "document"
@@ -215,9 +226,10 @@ async def submit_request_callback(client, query: CallbackQuery):
     
     # Fetch movie details again to get title/year
     try:
+        # Try TMDB first
         details = await get_movie_detailsx(movie_id, id=True)
         if not details or details.get("error"):
-            from utils import get_poster
+            # Fallback to IMDb
             details = await get_poster(movie_id, id=True)
             if not details:
                 await query.message.edit_text("❌ Could not fetch movie details.")
