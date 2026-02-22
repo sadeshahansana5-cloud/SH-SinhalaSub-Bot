@@ -64,8 +64,10 @@ async def request_timeout(client, user_id, timeout):
 async def handle_request_input(client, message):
     """Handle user's response to request."""
     user_id = message.from_user.id
+    
+    # Check if user is in request mode
     if user_id not in user_request_data or user_request_data[user_id].get("step") != "waiting_name":
-        return
+        return  # Not in request mode, let other handlers process
     
     query = message.text.strip()
     data = user_request_data[user_id]
