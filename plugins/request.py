@@ -32,7 +32,7 @@ async def search_tmdb(query):
         "query": query,
         "language": "en-US",
         "page": 1,
-        "include_adult": false
+        "include_adult": "false"
     }
     
     try:
