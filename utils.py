@@ -981,3 +981,10 @@ async def get_request_status(movie_name):
     # Search for any subtitle file with that movie name
     count = await Media.count_documents({"file_name": {"$regex": movie_name, "$options": "i"}, "file_type": "document"})
     return count > 0
+# ==============================================================================
+# NEW FUNCTION FOR PREMIUM CHECK (ADD WITHOUT DELETING ANYTHING)
+# ==============================================================================
+
+async def is_premium_user(user_id):
+    """Check if user has premium access."""
+    return await db.has_premium_access(user_id)
