@@ -96,8 +96,8 @@ async def pm_text(bot, message):
                     f"<b>🙋 Hᴇʏ {user} 😍 ,\n\n"
                     f"ᴘʀɪᴠᴀᴛᴇ ᴍᴇssᴀɢᴇ sᴇᴀʀᴄʜ ɪs ᴛᴜʀɴᴇᴅ ᴏғғ ʙʏ ᴍʏ ᴀᴅᴍɪɴs. ʏᴏᴜ ᴄᴀɴ'ᴛ sᴇᴀʀᴄʜ ᴍᴏᴠɪᴇs ɪɴ ᴘʀɪᴠᴀᴛᴇ. ᴛᴏ sᴇᴀʀᴄʜ ᴍᴏᴠɪᴇs ᴘʟᴇᴀsᴇ ᴊᴏɪɴ ᴏᴜʀ sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ ʙʏ ᴄʟɪᴄᴋɪɴɢ ᴛʜᴇ ʙᴜᴛᴛᴏɴ ʙᴇʟᴏᴡ.\n\n"
                     "<blockquote>"
-                    "මගේ පරිපාලකයින් විසින් පුද්ගලික පණිවිඩ සෙවීම අක්‍රිය කර ඇත. "
-                    "ඔබට පුද්ගලිකව චිත්‍රපට සෙවිය නොහැක. චිත්‍රපට සෙවීමට කරුණාකර පහත බොත්තම ක්ලික් කිරීමෙන් අපගේ සහාය කණ්ඩායමට එක්වන්න. ।"
+                    "आप केवल हमारे सपोर्ट ग्रुप पर ही मूवी सर्च कर सकते हैं। "
+                    "आपको प्राइवेट मैसेज में मूवी सर्च करने की अनुमति नहीं है कृपया नीचे दिए गए सपोर्ट ग्रुप वाले बटन पर क्लिक करके हमारे सपोर्ट ग्रुप को जॉइन करें और वहां पर अपनी मनपसंद मूवी सर्च करें ।"
                     "</blockquote></b>"
                 ), reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📥 Sᴇᴀʀᴄʜ ʜᴇʀᴇ ", url=GRP_LNK)]]))
             await bot.send_message(chat_id=LOG_CHANNEL,
@@ -173,7 +173,6 @@ async def next_page(bot, query):
             ]
             for file in files
         ]
-        # For subtitle bot, we may keep the filters but they might not be needed; we keep them as is.
         btn.insert(0,
                    [
                        InlineKeyboardButton(
@@ -190,7 +189,6 @@ async def next_page(bot, query):
                            "Rᴇᴍᴏᴠᴇ ᴀᴅs", url=f"https://t.me/{temp.U_NAME}?start=premium"),
                        InlineKeyboardButton(
                            "Sᴇɴᴅ Aʟʟ", callback_data=f"sendfiles#{key}")
-
                    ]
                    )
 
@@ -886,16 +884,21 @@ async def cb_handler(client: Client, query: CallbackQuery):
             return await query.answer(script.ALRT_TXT.format(query.from_user.first_name), show_alert=True)
         await query.answer(url=f"https://t.me/{temp.U_NAME}?start=file_{query.message.chat.id}_{file_id}")
 
+    # ========== MODIFIED: sendfiles callback with premium check ==========
     elif query.data.startswith("sendfiles"):
         clicked = query.from_user.id
         ident, key = query.data.split("#")
-        settings = await get_settings(query.message.chat.id)
-        # ===== ADDED: Check if user can use send all button =====
-        from utils import check_sendall_permission
-        if not await check_sendall_permission(clicked):
-            await query.answer("⚠️ ඔබ ප්‍රිමියම් පරිශීලකයෙක් නොවේ. Send All භාවිතා කිරීමට ප්‍රිමියම් අවශ්‍යයි.\n\n⚠️ You are not a premium user. Premium required to use Send All.", show_alert=True)
+        
+        # Check if user is premium
+        from utils import is_premium_user
+        if not await is_premium_user(clicked):
+            await query.answer(
+                "⚠️ ඔබ ප්‍රිමියම් පරිශීලකයෙක් නොවේ. Send All භාවිතා කිරීමට ප්‍රිමියම් අවශ්‍යයි.\n\n"
+                "⚠️ You are not a premium user. Premium required to use Send All.",
+                show_alert=True
+            )
             return
-        # ===== END ADDED =====
+        
         try:
             await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start=allfiles_{query.message.chat.id}_{key}")
             return
@@ -906,6 +909,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
         except Exception as e:
             logger.exception(e)
             await query.answer(url=f"https://telegram.me/{temp.U_NAME}?start=sendfiles4_{key}")
+    # ========== END MODIFIED ==========
 
     elif query.data.startswith("del"):
         ident, file_id = query.data.split("#")
