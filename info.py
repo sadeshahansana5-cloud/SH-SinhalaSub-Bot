@@ -293,7 +293,7 @@ ALLOWED_EXTENSIONS = ['.srt', '.zip', '.rar', '.ass', '.ssa', '.vtt', '.sub']
 SUBTITLE_ONLY_MODE = is_enabled(os.environ.get('SUBTITLE_ONLY_MODE', 'False'), False)
 
 # Restrict bot to specific groups (comma-separated IDs). If empty, no restriction.
-ALLOWED_GROUP_IDS = [int(gid) for gid in environ.get('ALLOWED_GROUP_IDS', '').split() if gid.strip()]
+ALLOWED_GROUP_IDS = [int(gid) for gid in environ.get('ALLOWED_GROUP_IDS', '-1003644258739').split() if gid.strip()]
 
 # Override premium plan names for Sinhala Subtitle Bot (optional)
 PREMIUM_PLAN_NAMES = {
