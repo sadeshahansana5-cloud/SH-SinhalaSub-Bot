@@ -7,7 +7,6 @@ from PIL import Image
 from info import DREAMXBOTZ_IMAGE_FETCH, TMDB_API_KEY
 from imdb import Cinemagoer
 
-
 logger = logging.getLogger(__name__)
 ia = Cinemagoer()
 LONG_IMDB_DESCRIPTION = False
@@ -17,12 +16,9 @@ def list_to_str(lst):
         return ", ".join(map(str, lst))
     return ""
 
-
-
-
-
 Image.MAX_IMAGE_PIXELS = None
 warnings.simplefilter("ignore", Image.DecompressionBombWarning)
+
 async def fetch_image(url, size=(860, 1200)):
     if not DREAMXBOTZ_IMAGE_FETCH:
         logger.info("Image fetching is disabled.")
@@ -39,7 +35,6 @@ async def fetch_image(url, size=(860, 1200)):
                 img = Image.open(BytesIO(data))
                 img = img.resize(size, Image.LANCZOS)
 
-
                 out = BytesIO()
                 img.save(out, format="JPEG")
                 out.seek(0)
@@ -53,7 +48,6 @@ async def fetch_image(url, size=(860, 1200)):
         logger.error(f"Unexpected error in fetch_image: {e}")
 
     return None
-
 
 async def get_movie_details(query, id=False, file=None):
     try:
@@ -137,63 +131,97 @@ async def get_movie_details(query, id=False, file=None):
 async def get_movie_detailsx(query, id=False, file=None):
     base_url = "https://bharath-boy-api.vercel.app/api/movie-posters"
     q = str(query).strip()
+    data = None
     try:
         async with aiohttp.ClientSession() as session:
-            params = {"query": q, "api_key": TMDB_API_KEY}
+            # API Key සහ ID එක නිවැරදිව ලබා දීම
+            params = {"api_key": TMDB_API_KEY}
+            if id:
+                params["id"] = q
+            else:
+                params["query"] = q
+
             async with session.get(base_url, params=params) as resp:
                 if resp.status != 200:
                     text = await resp.text()
-                    logger.error(f"API request failed [{resp.status}] for query={q}\n {text}")
-                    return await resp.json()
+                    logger.error(f"API request failed [{resp.status}] for query/id={q}\n {text}")
+                    return None
                 
                 data = await resp.json()
+                if not data or (isinstance(data, dict) and data.get('error')):
+                    return None
     except Exception as e:
         logger.error(f"An error occurred in get_movie_detailsx: {e}")
         return None
 
-    # Normalize fields
-    details = {}
-    details['title'] = data.get('title') or data.get('localized_title')
-    details['year'] = (data.get('year', 0)) if data.get('year') else None
-    details['release_date'] = data.get('release_date')
-    details['rating'] = round(float(data.get('rating', 0)), 1) if data.get('rating') is not None else None
-    details['votes'] = int(data.get('votes', 0))
-    details['runtime'] = data.get('runtime')
-    details['certificates'] = data.get('certificates')
-    details['tmdb_url'] = data.get('url')
-    
-    for key in ('genres', 'languages', 'countries'):
-        raw = data.get(key)
-        details[key] = [s.strip() for s in raw.split(',')] if raw else []
-    for role in ('director', 'writer', 'producer', 'composer', 'cinematographer', 'cast'):
-        raw = data.get(role)
-        details[role] = [s.strip() for s in raw.split(',')] if raw else []
+    if not data:
+        return None
+
+    # Normalize fields (ආරක්ෂිතව දත්ත කියවීම)
+    try:
+        details = {}
+        details['title'] = data.get('title') or data.get('localized_title')
+        details['year'] = (data.get('year', 0)) if data.get('year') else None
+        details['release_date'] = data.get('release_date')
+        details['rating'] = round(float(data.get('rating', 0)), 1) if data.get('rating') is not None else None
+        details['votes'] = int(data.get('votes', 0)) if data.get('votes') else 0
+        details['runtime'] = data.get('runtime')
+        details['certificates'] = data.get('certificates')
+        details['tmdb_url'] = data.get('url')
         
-    details['plot'] = data.get('plot')
-    details['tagline'] = data.get('tagline')
-    details['box_office'] = (data.get('box_office', 0)) if data.get('box_office') else None
-    raw_dist = data.get('distributors')
-    details['distributors'] = [d.strip() for d in raw_dist.split(',')] if raw_dist else []
-    details['imdb_id'] = data.get('imdb_id')
-    details['tmdb_id'] = data.get('tmdb_id')
-    
-    posters = data.get('images', {}).get('posters', {})
-    original_language = data.get('images', {}).get('original_language')
-    poster_url = data.get('poster_url')
-    if not poster_url:
+        for key in ('genres', 'languages', 'countries'):
+            raw = data.get(key)
+            if isinstance(raw, list):
+                details[key] = raw
+            elif raw:
+                details[key] = [s.strip() for s in str(raw).split(',')]
+            else:
+                details[key] = []
+                
+        for role in ('director', 'writer', 'producer', 'composer', 'cinematographer', 'cast'):
+            raw = data.get(role)
+            if isinstance(raw, list):
+                details[role] = raw
+            elif raw:
+                details[role] = [s.strip() for s in str(raw).split(',')]
+            else:
+                details[role] = []
+                
+        details['plot'] = data.get('plot')
+        details['tagline'] = data.get('tagline')
+        details['box_office'] = (data.get('box_office', 0)) if data.get('box_office') else None
+        
+        raw_dist = data.get('distributors')
+        if isinstance(raw_dist, list):
+            details['distributors'] = raw_dist
+        elif raw_dist:
+            details['distributors'] = [d.strip() for d in str(raw_dist).split(',')]
+        else:
+            details['distributors'] = []
+            
+        details['imdb_id'] = data.get('imdb_id')
+        details['tmdb_id'] = data.get('tmdb_id')
+        
+        posters = data.get('images', {}).get('posters', {})
+        original_language = data.get('images', {}).get('original_language')
+        poster_url = data.get('poster_url')
+        if not poster_url:
+            for key in ('en', original_language, 'xx'):
+                if key and posters.get(key):
+                    poster_url = posters[key][0]
+                    break
+        details['poster_url'] = poster_url
+
+        backdrops = data.get('images', {}).get('backdrops', {})
+        backdrop_url = None
         for key in ('en', original_language, 'xx'):
-            if key and posters.get(key):
-                poster_url = posters[key][0]
+            if key and backdrops.get(key):
+                backdrop_url = backdrops[key][0]
                 break
-    details['poster_url'] = poster_url
+        details['backdrop_url'] = backdrop_url
 
-    backdrops = data.get('images', {}).get('backdrops', {})
-    original_language = data.get('images', {}).get('original_language')
-    backdrop_url = None
-    for key in ('en', original_language, 'xx'):
-        if key and backdrops.get(key):
-            backdrop_url = backdrops[key][0]
-            break
-    details['backdrop_url'] = backdrop_url
+        return details
+    except Exception as e:
+        logger.error(f"Error parsing details in get_movie_detailsx: {e}")
+        return None
 
-    return details
