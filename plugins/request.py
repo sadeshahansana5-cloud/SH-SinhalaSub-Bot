@@ -274,10 +274,84 @@ async def select_movie_callback(client, query: CallbackQuery):
         
         # Check if subtitles already exist
         subtitle_count = await Media.count_documents({
+@Client.on_callback_query(filters.regex(r"^req_select_"))
+async def select_movie_callback(client, query: CallbackQuery):
+    """Handle movie selection from search results."""
+    print(f"--- 1. Button Clicked: {query.data} ---") # පරීක්ෂා කිරීම සඳහා
+    
+    data_parts = query.data.split("_")
+    source = data_parts[2]  # "tmdb" or "imdb"
+    
+    await query.answer()
+    print("--- 2. Query Answered ---") # පරීක්ෂා කිරීම සඳහා
+    
+    try:
+        if source == "tmdb":
+            media_type = data_parts[3]
+            tmdb_id = int(data_parts[4])
+            print(f"--- 3. Fetching TMDB details for {tmdb_id} ---")
+            
+            details = await get_tmdb_details(tmdb_id, media_type)
+            if not details:
+                print("--- ERROR: No details from TMDB ---")
+                await query.message.edit_text("❌ Could not fetch movie details from TMDB.")
+                return
+            
+            print("--- 4. Details Fetched Successfully ---")
+            
+            # Format details
+            title = details.get("title") or details.get("name") or "Unknown"
+            year = ""
+            if media_type == "movie":
+                release = details.get("release_date", "")
+                if release and len(release) >= 4:
+                    year = release[:4]
+            else:
+                first_air = details.get("first_air_date", "")
+                if first_air and len(first_air) >= 4:
+                    year = first_air[:4]
+            
+            poster_path = details.get("poster_path")
+            poster_url = f"{TMDB_IMAGE_BASE}{poster_path}" if poster_path else None
+            overview = details.get("overview", "No plot available.")
+            rating = details.get("vote_average", 0)
+            imdb_id = details.get("external_ids", {}).get("imdb_id")
+            
+            movie_info = {
+                "title": title,
+                "year": year,
+                "poster_url": poster_url,
+                "overview": overview,
+                "rating": rating,
+                "imdb_id": imdb_id,
+                "tmdb_id": tmdb_id,
+                "media_type": media_type
+            }
+        else:  # imdb
+            imdb_id = data_parts[3]
+            from utils import get_poster
+            print(f"--- 3. Fetching IMDB details for {imdb_id} ---")
+            details = await get_poster(imdb_id, id=True)
+            if not details:
+                await query.message.edit_text("❌ Could not fetch movie details from IMDb.")
+                return
+            movie_info = {
+                "title": details.get('title'),
+                "year": details.get('year'),
+                "poster_url": details.get('poster'),
+                "overview": details.get('plot'),
+                "rating": details.get('rating'),
+                "imdb_id": imdb_id
+            }
+        
+        print("--- 5. Checking Database for Subtitles ---")
+        # Check if subtitles already exist
+        subtitle_count = await Media.count_documents({
             "file_name": {"$regex": re.escape(movie_info['title']), "$options": "i"},
             "file_type": "document"
         })
         exists = subtitle_count > 0
+        print(f"--- 6. Database Check Done. Exists: {exists} ---")
         
         # Prepare availability status
         avail_text = script.REQUEST_AVAILABLE_TXT if exists else script.REQUEST_NOT_AVAILABLE_TXT
@@ -302,6 +376,7 @@ async def select_movie_callback(client, query: CallbackQuery):
             ])
         buttons.append([InlineKeyboardButton("❌ Cancel", callback_data="request_cancel")])
         
+        print("--- 7. Sending Result to Telegram ---")
         # Send message with poster
         if movie_info.get('poster_url'):
             try:
@@ -326,10 +401,14 @@ async def select_movie_callback(client, query: CallbackQuery):
                 reply_markup=InlineKeyboardMarkup(buttons),
                 disable_web_page_preview=True
             )
+        print("--- 8. Done! ---")
         
     except Exception as e:
+        print(f"--- ERROR IN TRY BLOCK: {e} ---")
         logger.exception(f"Error in select_movie_callback: {e}")
         await query.message.edit_text("❌ An error occurred. Please try again.")
+
+
 
 @Client.on_callback_query(filters.regex(r"^req_submit_"))
 async def submit_request_callback(client, query: CallbackQuery):
