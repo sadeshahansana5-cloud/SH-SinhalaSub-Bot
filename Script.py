@@ -224,7 +224,7 @@ Nᴀᴍᴇ : {}
 
 Mᴇꜱꜱᴀɢᴇ : <b>{}</b>"""
     
-    CAPTION = """<b><a href="https://t.me/iP_Update">{file_name}</a></b>\n\n<b>⚜️ Powered By : <a href="https://t.me/iP_Update">[ iP Update ]</a></b>"""
+    CAPTION = """<b><a href="https://t.me/shprofilterupdate">{file_name}</a></b>\n\n<b>📁 File Size : {file_size}</b>\n\n<b>⚜️ Powered By : <a href="https://t.me/shprofilterupdate">[ Ultra Pro Bots ]</a></b>\n\n<b>⚜️ Movie Download Bot : <a href="http://t.me/UltraProFilter_bot">[ Ultra Pro Filter Bot ]</a></b>"""
 
     
     MOVIE_UPDATE_NOTIFY_TXT = """
