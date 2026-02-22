@@ -7,7 +7,6 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQ
 from database.users_chats_db import db
 from database.ia_filterdb import Media
 from info import ENABLE_REQUESTS, REQUEST_CHANNEL, REQUEST_LOGS
-from utils import get_poster
 from Script import script
 
 logger = logging.getLogger(__name__)
@@ -137,7 +136,6 @@ async def check_movie_in_db(client, response_msg, movie_name, year):
     # Search in database
     try:
         # Create regex pattern from movie name
-        # First, try to find exact year if provided
         if year:
             # Search with year in filename
             year_pattern = str(year)
@@ -163,7 +161,7 @@ async def check_movie_in_db(client, response_msg, movie_name, year):
             # Subtitles found
             await checking_msg.edit_text(
                 f"✅ **{search_query}** සඳහා උපසිරැසි දැනටමත් අප සතුව ඇත!\n\n"
-                f"ඔබට `/start` භාවිතා කර හෝ සෙවීමෙන් ලබාගත හැක.",
+                f"ඔබට සෙවීමෙන් ලබාගත හැක.",
                 reply_markup=InlineKeyboardMarkup([[
                     InlineKeyboardButton("🔍 සොයන්න", switch_inline_query_current_chat=movie_name)
                 ]])
